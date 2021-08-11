@@ -69,7 +69,7 @@ class CombinedStack(core.Stack):
         self.efs_share = efs.FileSystem(
             self,
             "elasticFileSystem",
-            file_system_name=f"high-performance-storage",
+            file_system_name=f"efs",
             vpc=vpc,
             security_group=self.efs_sg,
             encrypted=False,
@@ -94,7 +94,7 @@ class CombinedStack(core.Stack):
         # Create EFS access point
         self.efs_ap = efs.AccessPoint(
             self,
-            "efsDefaultAccessPoint",
+            "efs-access-point",
             path=f"/",
             file_system=self.efs_share,
             posix_user=efs_user,
@@ -157,8 +157,8 @@ class CombinedStack(core.Stack):
         nat_gateway_id = f'lambda_vpc_natgw_{n}'
         if len(self.pre_allocated_eips) > 0:
             nat_gateway_instance = ec2.CfnNatGateway(self, id=nat_gateway_id,
-                                                 subnet_id=target_subnet.subnet_id,
-                                                 allocation_id=self.pre_allocated_eips[n])
+                                                     subnet_id=target_subnet.subnet_id,
+                                                     allocation_id=self.pre_allocated_eips[n])
         else:
             eip = ec2.CfnEIP(self, id=f'lambda_vpc_eip_{n}')
             nat_gateway_instance = ec2.CfnNatGateway(self, id=nat_gateway_id,
