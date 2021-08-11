@@ -1,27 +1,38 @@
 from aws_cdk import core
 import aws_cdk.aws_ec2 as ec2
 from aws_cdk import aws_efs as efs
+from netaddr import IPNetwork
+
 
 EC2_KEY_NAME = 'awspersonal'
 EC2_WHITELIST_IPS = [
     "82.24.204.83/32",
     "159.48.53.199/32"
 ]
+PREALLOCATED_EIP_LIST = [
+            'eipalloc-0af1e42ea007b7c4b',
+            'eipalloc-07dbb519fedab2d84',
+            'eipalloc-07505b09067c6ddb4',
+            'eipalloc-06dfba9ebc0610458',
+            'eipalloc-08b8608be603b7081'
+        ]
+N_SUBNETS = 5
 
 
-class EFSStack(core.Stack):
+class CombinedStack(core.Stack):
 
     def __init__(self, scope: core.Construct, id: str, **kwargs) -> None:
         super().__init__(scope, id, **kwargs)
 
-        self.az = 'us-east-1b'
         self.vpc_cidr_start = '10.2.0.0'
         self.vpc_cidr = f'{self.vpc_cidr_start}/16'
 
+        self.pre_allocated_eips = PREALLOCATED_EIP_LIST
+
         # create VPC
-        # If you run this without subnet_configuration=[] it creates 2 public subnets and 2 isolated subnets
         self.vpc = ec2.Vpc(
-            self, 'efs-vpc', cidr=self.vpc_cidr, nat_gateways=0, enable_dns_support=True, subnet_configuration=[
+            self, 'efs-vpc', cidr=self.vpc_cidr, nat_gateways=0, enable_dns_support=True, max_azs=2,
+            subnet_configuration=[
                 ec2.SubnetConfiguration(
                     name='public-subnet',
                     subnet_type=ec2.SubnetType.PUBLIC,
@@ -35,6 +46,9 @@ class EFSStack(core.Stack):
             ],
             enable_dns_hostnames=True)
 
+        # Get the starting IP after the 2x public and 2x isolated subnets created as part of the VPC cidr
+        self.next_cidr = str(IPNetwork(f'10.2.0.0/26').next(4)).split('/')[0]
+
         self.subnet_id_to_subnet_map = {}
         self.route_table_id_to_route_table_map = {}
         self.security_group_id_to_group_map = {}
@@ -42,6 +56,9 @@ class EFSStack(core.Stack):
 
         self.create_efs(self.vpc)
         self.create_mgmt_ec2()
+
+        for i in range(0, N_SUBNETS):
+            self.create_lambda_access_route(i)
 
     def create_efs(self, vpc, id=1):
         # Create Security Group to connect to EFS
@@ -57,12 +74,6 @@ class EFSStack(core.Stack):
             peer=ec2.Peer.ipv4(vpc.vpc_cidr_block),
             connection=ec2.Port.tcp(2049),
             description="Allow EC2 instances within the same VPC to connect to EFS"
-        )
-
-        self.efs_sg.add_ingress_rule(
-            peer=ec2.Peer.ipv4('10.0.0.0/16'),
-            connection=ec2.Port.tcp(2049),
-            description="Allow EC2 instances within the lambda VPC to connect to EFS"
         )
 
         # Create the EFS filesystem
@@ -114,7 +125,7 @@ class EFSStack(core.Stack):
             allow_all_outbound=True,
         )
 
-        # add a new ingress rule to allow port 22 to internal hosts
+        # add a new ingress rule to allow port 22 to internal hosts for EC2_WHITELIST_IPS
         for ip in EC2_WHITELIST_IPS:
             sec_group.add_ingress_rule(
                 peer=ec2.Peer.ipv4(ip),
@@ -136,10 +147,54 @@ class EFSStack(core.Stack):
         )
 
         """
-        To be run on box:
+        To be run on EC2:
         
         sudo yum install -y amazon-efs-utils
         mkdir efs/ && sudo mount -t efs fs-c590c371 efs/
         """
 
+    def create_lambda_access_route(self, n):
+        """
+        Create NAT gateway in public subnet using EIP from self.pre_allocated_eips[n]
+        Create private subnet with route to NAT Gateway
 
+        """
+
+        cidr_mask_str = "/26"
+        # Round robin picking of public subnet (and AZ) by modulus on subnet n
+        target_subnet = self.vpc.select_subnets(subnet_type=ec2.SubnetType('PUBLIC')).subnets[n % 2 == 0]
+
+        # Create NAT Gateway
+        nat_gateway_id = f'lambda_vpc_natgw_{n}'
+        nat_gateway_instance = ec2.CfnNatGateway(self, id=nat_gateway_id,
+                                             subnet_id=target_subnet.subnet_id,
+                                             allocation_id=self.pre_allocated_eips[n])
+
+        # Create private subnet
+        subnet_id = f'lambda_vpc_private_{n}'
+        cidr = str(IPNetwork(f'{self.next_cidr}{cidr_mask_str}').next(n))
+        self.subnet_id_to_subnet_map[subnet_id] = ec2.CfnSubnet(
+            self, subnet_id, vpc_id=self.vpc.vpc_id, cidr_block=cidr,
+            availability_zone=target_subnet.availability_zone, tags=[{'key': 'Name', 'value': subnet_id}],
+            map_public_ip_on_launch=False
+        )
+
+        # Create route table
+        route_table_id = f'route_lambda_vpc_private_{n}'
+        self.route_table_id_to_route_table_map[route_table_id] = ec2.CfnRouteTable(
+            self, route_table_id, vpc_id=self.vpc.vpc_id, tags=[{'key': 'Name', 'value': route_table_id}]
+        )
+
+        # Add route to table
+        route_params = {
+            'destination_cidr_block': '0.0.0.0/0',
+            'nat_gateway_id': nat_gateway_instance.ref,
+            'route_table_id': self.route_table_id_to_route_table_map[route_table_id].ref,
+        }
+        ec2.CfnRoute(self, f'{route_table_id}-route-{n}', **route_params)
+
+        # Assign route to subnet
+        ec2.CfnSubnetRouteTableAssociation(
+            self, f'{subnet_id}-{route_table_id}', subnet_id=self.subnet_id_to_subnet_map[subnet_id].ref,
+            route_table_id=self.route_table_id_to_route_table_map[route_table_id].ref
+        )
