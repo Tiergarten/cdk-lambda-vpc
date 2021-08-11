@@ -4,30 +4,19 @@ from aws_cdk import aws_efs as efs
 from netaddr import IPNetwork
 
 
-EC2_KEY_NAME = 'awspersonal'
-EC2_WHITELIST_IPS = [
-    "82.24.204.83/32",
-    "159.48.53.199/32"
-]
-PREALLOCATED_EIP_LIST = [
-            'eipalloc-0af1e42ea007b7c4b',
-            'eipalloc-07dbb519fedab2d84',
-            'eipalloc-07505b09067c6ddb4',
-            'eipalloc-06dfba9ebc0610458',
-            'eipalloc-08b8608be603b7081'
-        ]
-N_SUBNETS = 5
-
-
 class CombinedStack(core.Stack):
 
-    def __init__(self, scope: core.Construct, id: str, **kwargs) -> None:
+    def __init__(self, scope: core.Construct, id: str, eip_list=[], ec2_whitelist_ips=[], ec2_key_name='',
+                 n_subnets=5, **kwargs) -> None:
         super().__init__(scope, id, **kwargs)
 
         self.vpc_cidr_start = '10.2.0.0'
         self.vpc_cidr = f'{self.vpc_cidr_start}/16'
 
-        self.pre_allocated_eips = PREALLOCATED_EIP_LIST
+        self.pre_allocated_eips = eip_list
+        self.ec2_whitelist_ips = ec2_whitelist_ips
+        self.ec2_key_name = ec2_key_name
+        self.n_subnets = n_subnets
 
         # create VPC
         self.vpc = ec2.Vpc(
@@ -47,7 +36,7 @@ class CombinedStack(core.Stack):
             enable_dns_hostnames=True)
 
         # Get the starting IP after the 2x public and 2x isolated subnets created as part of the VPC cidr
-        self.next_cidr = str(IPNetwork(f'10.2.0.0/26').next(4)).split('/')[0]
+        self.next_cidr = str(IPNetwork(f'{self.vpc_cidr_start}/26').next(4)).split('/')[0]
 
         self.subnet_id_to_subnet_map = {}
         self.route_table_id_to_route_table_map = {}
@@ -57,7 +46,7 @@ class CombinedStack(core.Stack):
         self.create_efs(self.vpc)
         self.create_mgmt_ec2()
 
-        for i in range(0, N_SUBNETS):
+        for i in range(0, self.n_subnets):
             self.create_lambda_access_route(i)
 
     def create_efs(self, vpc, id=1):
@@ -126,7 +115,7 @@ class CombinedStack(core.Stack):
         )
 
         # add a new ingress rule to allow port 22 to internal hosts for EC2_WHITELIST_IPS
-        for ip in EC2_WHITELIST_IPS:
+        for ip in self.ec2_whitelist_ips:
             sec_group.add_ingress_rule(
                 peer=ec2.Peer.ipv4(ip),
                 description="Allow SSH connection",
@@ -142,7 +131,7 @@ class CombinedStack(core.Stack):
             machine_image=ec2.MachineImage().lookup(name=ec2_ami_name),
             vpc=self.vpc,
             security_group=sec_group,
-            key_name=EC2_KEY_NAME,
+            key_name=self.ec2_key_name,
             vpc_subnets=ec2.SubnetSelection(subnet_type=ec2.SubnetType('PUBLIC'))
         )
 
@@ -166,9 +155,15 @@ class CombinedStack(core.Stack):
 
         # Create NAT Gateway
         nat_gateway_id = f'lambda_vpc_natgw_{n}'
-        nat_gateway_instance = ec2.CfnNatGateway(self, id=nat_gateway_id,
-                                             subnet_id=target_subnet.subnet_id,
-                                             allocation_id=self.pre_allocated_eips[n])
+        if len(self.pre_allocated_eips) > 0:
+            nat_gateway_instance = ec2.CfnNatGateway(self, id=nat_gateway_id,
+                                                 subnet_id=target_subnet.subnet_id,
+                                                 allocation_id=self.pre_allocated_eips[n])
+        else:
+            eip = ec2.CfnEIP(self, id=f'lambda_vpc_eip_{n}')
+            nat_gateway_instance = ec2.CfnNatGateway(self, id=nat_gateway_id,
+                                                     subnet_id=target_subnet.subnet_id,
+                                                     allocation_id=eip.attr_allocation_id)
 
         # Create private subnet
         subnet_id = f'lambda_vpc_private_{n}'
