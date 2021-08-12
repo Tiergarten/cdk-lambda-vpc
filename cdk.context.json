@@ -1,0 +1,90 @@
+{
+  "availability-zones:account=972734064061:region=us-east-1": [
+    "us-east-1a",
+    "us-east-1b",
+    "us-east-1c",
+    "us-east-1d",
+    "us-east-1e",
+    "us-east-1f"
+  ],
+  "ami:account=972734064061:filters.image-type.0=machine:filters.name.0=amzn2-ami-hvm-2.0.20200520.1-x86_64-gp2:filters.state.0=available:region=us-east-1": "ami-09d95fab7fff3776c",
+  "vpc-provider:account=972734064061:filter.tag:Name=combined-vpc/efs-vpc:region=us-east-1:returnAsymmetricSubnets=true": {
+    "vpcId": "vpc-09ad3615d1c0679d1",
+    "vpcCidrBlock": "10.2.0.0/16",
+    "availabilityZones": [],
+    "subnetGroups": [
+      {
+        "name": "Private",
+        "type": "Private",
+        "subnets": [
+          {
+            "subnetId": "subnet-0881bf9afa5c7e971",
+            "cidr": "10.2.1.192/26",
+            "availabilityZone": "us-east-1a",
+            "routeTableId": "rtb-0b72875be88b3eca0"
+          },
+          {
+            "subnetId": "subnet-07a941ce8cc07be4c",
+            "cidr": "10.2.1.64/26",
+            "availabilityZone": "us-east-1a",
+            "routeTableId": "rtb-01cda6756696f0e5e"
+          },
+          {
+            "subnetId": "subnet-0c9535412fef81d57",
+            "cidr": "10.2.1.128/26",
+            "availabilityZone": "us-east-1b",
+            "routeTableId": "rtb-07f483c26b752c2e8"
+          },
+          {
+            "subnetId": "subnet-08258cbdba9267530",
+            "cidr": "10.2.1.0/26",
+            "availabilityZone": "us-east-1b",
+            "routeTableId": "rtb-053dba75393f5fcf8"
+          },
+          {
+            "subnetId": "subnet-028e2b5cd6a3c2d93",
+            "cidr": "10.2.2.0/26",
+            "availabilityZone": "us-east-1b",
+            "routeTableId": "rtb-056f56a9ceda232b1"
+          }
+        ]
+      },
+      {
+        "name": "public-subnet",
+        "type": "Public",
+        "subnets": [
+          {
+            "subnetId": "subnet-00de8af08bc0832cb",
+            "cidr": "10.2.0.0/26",
+            "availabilityZone": "us-east-1a",
+            "routeTableId": "rtb-0cb1d5ef07a409b80"
+          },
+          {
+            "subnetId": "subnet-02b10cce4bd9ba6b9",
+            "cidr": "10.2.0.64/26",
+            "availabilityZone": "us-east-1b",
+            "routeTableId": "rtb-02abb01b131dae608"
+          }
+        ]
+      },
+      {
+        "name": "efs-subnet",
+        "type": "Isolated",
+        "subnets": [
+          {
+            "subnetId": "subnet-0f6649e4f9fffd634",
+            "cidr": "10.2.0.128/26",
+            "availabilityZone": "us-east-1a",
+            "routeTableId": "rtb-04332245cca04919e"
+          },
+          {
+            "subnetId": "subnet-0fc18fe9f92abde76",
+            "cidr": "10.2.0.192/26",
+            "availabilityZone": "us-east-1b",
+            "routeTableId": "rtb-064abaa41daf14e99"
+          }
+        ]
+      }
+    ]
+  }
+}

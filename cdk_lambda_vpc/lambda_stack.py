@@ -11,7 +11,7 @@ class LambdaStack(core.Stack):
     def __init__(self, scope: core.Construct, id: str, **kwargs) -> None:
         super().__init__(scope, id, **kwargs)
 
-        vpc = ec2.Vpc.from_lookup(self, "VPC", vpc_name='combined-vpc-no-eips/efs-vpc')
+        vpc = ec2.Vpc.from_lookup(self, "VPC", vpc_name='combined-vpc/efs-vpc')
 
         # https://github.com/mthenw/awesome-layers
         layer = _lambda.LayerVersion.from_layer_version_arn(

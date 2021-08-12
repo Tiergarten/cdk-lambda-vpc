@@ -10,10 +10,10 @@ EC2_WHITELIST_IPS = [
     "159.48.53.199/32"
 ]
 PREALLOCATED_EIP_LIST = [
-            'eipalloc-0af1e42ea007b7c4b',
-            'eipalloc-07dbb519fedab2d84',
-            'eipalloc-07505b09067c6ddb4',
-            'eipalloc-06dfba9ebc0610458',
-            'eipalloc-08b8608be603b7081'
+            'eipalloc-0967e632d36df641e',
+            'eipalloc-09a469e32ca650d30',
+            'eipalloc-0bbe02074d59f42f3',
+            'eipalloc-0bcad3cccbf9a5ae5',
+            'eipalloc-057f9076151e73657'
         ]
 N_SUBNETS = 5
