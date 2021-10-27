@@ -13,6 +13,7 @@ class LambdaStack(core.Stack):
 
         vpc = ec2.Vpc.from_lookup(self, "VPC", vpc_name='combined-vpc/efs-vpc')
 
+
         # https://github.com/mthenw/awesome-layers
         layer = _lambda.LayerVersion.from_layer_version_arn(
             self,

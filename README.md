@@ -1,17 +1,9 @@
 
-# Welcome to your CDK Python project!
+# CDK Patterns 
 
-## Usage
-`pip install -r requirements.txt`  
-`cdk deploy combined-vpc`
+## Overview
 
-## Useful commands
-
- * `cdk ls`          list all stacks in the app
- * `cdk synth`       emits the synthesized CloudFormation template
- * `cdk deploy`      deploy this stack to your default AWS account/region
- * `cdk diff`        compare deployed stack with current state
- * `cdk docs`        open CDK documentation
+CDK Sandbox / snippets - not for production use
 
 ## Permissions
 from: https://alexanderzeitler.com/articles/minimal-iam-permission-for-aws-cdk-deployment/  

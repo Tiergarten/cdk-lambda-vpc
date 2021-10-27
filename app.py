@@ -3,10 +3,13 @@
 from aws_cdk import core
 from cdk_lambda_vpc.combined_stack import CombinedStack
 from cdk_lambda_vpc.lambda_stack import LambdaStack
-
+from cdk_lambda_vpc.redis_stack_prod import RedisStack
 import config
 
 app = core.App()
+
+RedisStack(app, "redis",
+           env=config.env_dev)
 
 CombinedStack(app, "combined-vpc",
               ec2_whitelist_ips=config.EC2_WHITELIST_IPS,

@@ -7,7 +7,7 @@ from netaddr import IPNetwork
 class CombinedStack(core.Stack):
 
     def __init__(self, scope: core.Construct, id: str, eip_list=[], ec2_whitelist_ips=[], ec2_key_name='',
-                 n_subnets=5, **kwargs) -> None:
+                 n_subnets=1, **kwargs) -> None:
         super().__init__(scope, id, **kwargs)
 
         self.vpc_cidr_start = '10.2.0.0'
@@ -20,7 +20,7 @@ class CombinedStack(core.Stack):
 
         # create VPC
         self.vpc = ec2.Vpc(
-            self, 'efs-vpc', cidr=self.vpc_cidr, nat_gateways=0, enable_dns_support=True, max_azs=2,
+            self, 'cdk-vpc', cidr=self.vpc_cidr, nat_gateways=0, enable_dns_support=True, max_azs=2,
             subnet_configuration=[
                 ec2.SubnetConfiguration(
                     name='public-subnet',
